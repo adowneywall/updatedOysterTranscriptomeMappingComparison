@@ -2,7 +2,8 @@
 title: "Two Sample RNA-seq sample comparison"
 author: "adowneywall"
 date: "7/9/2020"
-output: html_document
+output: github_document
+always_allow_html: true
 ---
 
 ```{r setup, include=FALSE}
