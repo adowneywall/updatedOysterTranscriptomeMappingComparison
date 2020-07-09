@@ -1,7 +1,7 @@
 # Genome RNA-seq mapping and quantification comparison
 
 ## Overview  
-Compared mapping and quantification of two *C. virginica* RNA-seq samples (17005 and 17099,[available on NCBI](https://www.ncbi.nlm.nih.gov/bioproject/PRJNA594029/)) using genome the [NCBI oyster genome](https://www.ncbi.nlm.nih.gov/assembly/GCF_002022765.2) and a [reduced genome]() created by Jon Puritz.
+Compared mapping and quantification of two *C. virginica* RNA-seq samples (17005 and 17099,[available on NCBI](https://www.ncbi.nlm.nih.gov/bioproject/PRJNA594029/)) using genome the [NCBI oyster genome](https://www.ncbi.nlm.nih.gov/assembly/GCF_002022765.2) and a [reduced (masked) genome](https://drive.google.com/drive/folders/1FaXeY5ZA6UfaxxyVA2dwEUrX3unlwwo8) created by Jon Puritz.
 
 ## Protocol   
 I started with samples files that were already trimmed using a standard trimmomatic approach, and used a custom script that combined mapping with STAR (2-pass approach) and transcript quantification with RSEM.
