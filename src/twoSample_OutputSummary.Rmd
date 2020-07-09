@@ -1,0 +1,138 @@
+---
+title: "Two Sample RNA-seq sample comparison"
+author: "adowneywall"
+date: "7/9/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r include=FALSE}
+library(ggplot2, quietly = TRUE)
+library(cowplot, quietly = TRUE)
+library(dplyr, quietly = TRUE)
+library(kableExtra, quietly = TRUE)
+library(corrplot)
+```
+
+## STAR Mapping Comparison
+
+```{r echo=FALSE}
+#### STAR Data
+setwd("~/Github/updatedOysterTranscriptomeMappingComparison/")
+## STAR Mapping Comparison
+colNames <- c("Sample_Unique","Sample","Genome","Parameters",
+              "InputReads","UniqueReads","UniqueReadPercent",
+              "totalSplices","MisMatchRate",
+              "MultiMapReads","MultiMapReadPercent",
+              "UnMappedMismatchPercent","UnMappedShortPercent")
+
+readInSTARSummary <- function(folder=NULL,genome="Hap",param="custom",col.names=NULL){
+  fl <- list.files(folder,pattern = "final.out")
+  y <- NULL
+  for(i in 1:length(fl)){
+    x <- read.delim(paste0(folder,fl[i]),header = FALSE,stringsAsFactors = FALSE)
+    x_sub <- x[c(5,8,9,11,17,23,24,28,29),2]
+    ifelse(genome == "Hap",
+           ID <- substr(fl[i],1,5),
+           ID <- substr(fl[i],4,8))
+    ID_U <- paste0(ID,"_",genome,"_",param)
+    y <- rbind(y,c(ID_U,ID,genome,param,x_sub))
+  }
+  y <- data.frame(y,stringsAsFactors = FALSE)
+  colnames(y) <- col.names
+  for(i in 1:nrow(y)){y[i,c(7,9,11,12,13)] <- substr(y[i,c(7,9,11,12,13)],1,4)}
+  return(y)
+}
+
+hap_default_STAR <- readInSTARSummary("data/samples/haploTigGenome_defaultParameters/",
+                  "Hap","default",colNames)
+hap_custom_STAR <- readInSTARSummary("data/samples/haploTigGenome_customParameters/",
+                                      "Hap","custom",colNames)
+og_custom_STAR <- readInSTARSummary("data/samples/originalGenome_customParameters/",
+                                      "original","custom",colNames)
+df_STAR <- rbind(hap_default_STAR,hap_custom_STAR,og_custom_STAR)
+
+sub <- c(which(df_STAR$Sample == c("17005")),which(df_STAR$Sample == c("17099")))
+df_overlap <- df_STAR[sub,]
+```
+
+```{r echo=FALSE}
+#### Table
+ kable(df_overlap) %>%
+  kable_styling() %>%
+  scroll_box(width = "800px", height = "250px")
+```
+
+
+```{r  echo=FALSE, fig.width=10,fig.height=8}
+#### Plots
+p1 <- ggplot(df_overlap,aes(x=Sample,
+                            y=as.numeric(UniqueReadPercent),
+                            colour=interaction(Genome,Parameters))) + 
+  geom_jitter(size=5) +
+  labs(colour="Genome.Parameter",y="Unique Map %") +
+  theme_cowplot()
+p2 <- ggplot(df_overlap,aes(x=Sample,
+                   y=as.numeric(MultiMapReadPercent),
+                   colour=interaction(Genome,Parameters))) + 
+  geom_jitter(size=5) +
+  labs(colour="Genome.Parameter",y="Multi Map %") +
+  theme_cowplot()
+p3 <- ggplot(df_overlap,aes(x=Sample,
+                            y=as.numeric(MisMatchRate),
+                            colour=interaction(Genome,Parameters))) + 
+  geom_jitter(size=5) +
+  labs(colour="Genome.Parameter",y="Mismatch Rate (%)") +
+  theme_cowplot()
+p4 <- ggplot(df_overlap,aes(x=Sample,
+                            y=as.numeric(UnMappedShortPercent),
+                            colour=interaction(Genome,Parameters))) + 
+  geom_jitter(size=5) +
+  labs(colour="Genome.Parameter",y="Unmapped Read %") +
+  theme_cowplot()
+
+plot_grid(p1,p2,p3,p4,labels = c("A","B","C","D"),nrow=2)
+```
+
+## RSEM Comparison
+
+```{r}
+setwd("~/Github/updatedOysterTranscriptomeMappingComparison/")
+OG_RSEM <- read.delim("data/samples/originalGenome_customParameters/17005_.genes.results.txt")
+Hap_RSEM <- read.delim("data/samples/haploTigGenome_customParameters/17005.genes.results.txt")
+# TPM
+tpmMat <- data.frame(OG_custom=OG_RSEM$TPM,Hap_custom=Hap_RSEM$TPM)
+# Length
+lengthMat <- data.frame(OG_custom=OG_RSEM$length,Hap_custom=Hap_RSEM$length)
+# Expected Count
+ExpCountMat <- data.frame(OG_custom=OG_RSEM$expected_count,Hap_custom=Hap_RSEM$expected_count)
+
+```
+
+### Correlations
+
+**TPM (Transcripts Per Million)**
+```{r}
+corrplot.mixed(cor(tpmMat))
+```
+
+**Gene Length**
+```{r}
+corrplot.mixed(cor(lengthMat))
+```
+
+**Expected Count**
+```{r}
+corrplot.mixed(cor(ExpCountMat))
+```
+
+### TPM - Plot
+
+```{r,fig.width=10}
+ggplot(tpmMat,aes(x=OG_custom,y=Hap_custom)) + 
+  geom_point() +
+  theme_cowplot()
+```
