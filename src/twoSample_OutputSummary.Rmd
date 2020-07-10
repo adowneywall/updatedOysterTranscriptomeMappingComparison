@@ -4,6 +4,8 @@ author: "adowneywall"
 date: "7/9/2020"
 output: github_document
 always_allow_html: true
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
@@ -17,7 +19,7 @@ library(dplyr, quietly = TRUE)
 library(kableExtra, quietly = TRUE)
 library(corrplot)
 ```
-
+  
 ## STAR Mapping Comparison
 
 ```{r echo=FALSE}
@@ -98,7 +100,7 @@ p4 <- ggplot(df_overlap,aes(x=Sample,
 plot_grid(p1,p2,p3,p4,labels = c("A","B","C","D"),nrow=2)
 ```
 
-## RSEM Comparison
+## RSEM Comparison (sample 17005)
 
 ```{r}
 setwd("~/Github/updatedOysterTranscriptomeMappingComparison/")
@@ -111,6 +113,14 @@ lengthMat <- data.frame(OG_custom=OG_RSEM$length,Hap_custom=Hap_RSEM$length)
 # Expected Count
 ExpCountMat <- data.frame(OG_custom=OG_RSEM$expected_count,Hap_custom=Hap_RSEM$expected_count)
 
+```
+
+### CountSummary
+```{r}
+#Number of genes with at least 1 TPM - original genome
+sum(tpmMat$OG_custom > 1)
+#Number of genes with at least 1 TPM - reduced genome
+sum(tpmMat$Hap_custom > 1)
 ```
 
 ### Correlations
@@ -130,10 +140,25 @@ corrplot.mixed(cor(lengthMat))
 corrplot.mixed(cor(ExpCountMat))
 ```
 
-### TPM - Plot
+### TPM - Plot (Sample 17005, custom parameters, genome comparison)
 
-```{r,fig.width=10}
-ggplot(tpmMat,aes(x=OG_custom,y=Hap_custom)) + 
+```{r,fig.width=10,fig.height=15}
+p1 <- ggplot(tpmMat,aes(x=OG_custom,y=Hap_custom)) + 
+  geom_point() +
+  labs(x="Original Genome (TPM)", y = "Reduced Genome (TPM)",title="All Loci") +
+  theme_cowplot()
+
+p2 <- ggplot(tpmMat,aes(x=OG_custom,y=Hap_custom)) + 
+  xlim(0,200) + ylim(0,200) +
+  labs(x="Original Genome (TPM)", y = "Reduced Genome (TPM)",title="Max 200") +
   geom_point() +
   theme_cowplot()
+
+p3 <- ggplot(tpmMat,aes(x=OG_custom,y=Hap_custom)) + 
+  xlim(0,50) + ylim(0,50) +
+  labs(x="Original Genome (TPM)", y = "Reduced Genome (TPM)",title="Max 50") +
+  geom_point() +
+  theme_cowplot()
+
+plot_grid(p1,p2,p3,nrow = 3)
 ```

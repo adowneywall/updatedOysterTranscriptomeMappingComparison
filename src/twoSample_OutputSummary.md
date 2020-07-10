@@ -637,7 +637,7 @@ custom
 
 ![](twoSample_OutputSummary_files/figure-gfm/unnamed-chunk-4-1.png)<!-- -->
 
-## RSEM Comparison
+## RSEM Comparison (sample 17005)
 
 ``` r
 setwd("~/Github/updatedOysterTranscriptomeMappingComparison/")
@@ -651,6 +651,22 @@ lengthMat <- data.frame(OG_custom=OG_RSEM$length,Hap_custom=Hap_RSEM$length)
 ExpCountMat <- data.frame(OG_custom=OG_RSEM$expected_count,Hap_custom=Hap_RSEM$expected_count)
 ```
 
+### CountSummary
+
+``` r
+#Number of genes with at least 1 TPM - original genome
+sum(tpmMat$OG_custom > 1)
+```
+
+    ## [1] 20598
+
+``` r
+#Number of genes with at least 1 TPM - reduced genome
+sum(tpmMat$Hap_custom > 1)
+```
+
+    ## [1] 17908
+
 ### Correlations
 
 **TPM (Transcripts Per
@@ -660,7 +676,7 @@ Million)**
 corrplot.mixed(cor(tpmMat))
 ```
 
-![](twoSample_OutputSummary_files/figure-gfm/unnamed-chunk-6-1.png)<!-- -->
+![](twoSample_OutputSummary_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->
 
 **Gene
 Length**
@@ -669,7 +685,7 @@ Length**
 corrplot.mixed(cor(lengthMat))
 ```
 
-![](twoSample_OutputSummary_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->
+![](twoSample_OutputSummary_files/figure-gfm/unnamed-chunk-8-1.png)<!-- -->
 
 **Expected
 Count**
@@ -678,14 +694,33 @@ Count**
 corrplot.mixed(cor(ExpCountMat))
 ```
 
-![](twoSample_OutputSummary_files/figure-gfm/unnamed-chunk-8-1.png)<!-- -->
+![](twoSample_OutputSummary_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
 
-### TPM - Plot
+### TPM - Plot (Sample 17005, custom parameters, genome comparison)
 
 ``` r
-ggplot(tpmMat,aes(x=OG_custom,y=Hap_custom)) + 
+p1 <- ggplot(tpmMat,aes(x=OG_custom,y=Hap_custom)) + 
+  geom_point() +
+  labs(x="Original Genome (TPM)", y = "Reduced Genome (TPM)",title="All Loci") +
+  theme_cowplot()
+
+p2 <- ggplot(tpmMat,aes(x=OG_custom,y=Hap_custom)) + 
+  xlim(0,200) + ylim(0,200) +
+  labs(x="Original Genome (TPM)", y = "Reduced Genome (TPM)",title="Max 200") +
   geom_point() +
   theme_cowplot()
+
+p3 <- ggplot(tpmMat,aes(x=OG_custom,y=Hap_custom)) + 
+  xlim(0,50) + ylim(0,50) +
+  labs(x="Original Genome (TPM)", y = "Reduced Genome (TPM)",title="Max 50") +
+  geom_point() +
+  theme_cowplot()
+
+plot_grid(p1,p2,p3,nrow = 3)
 ```
 
-![](twoSample_OutputSummary_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
+    ## Warning: Removed 755 rows containing missing values (geom_point).
+
+    ## Warning: Removed 3132 rows containing missing values (geom_point).
+
+![](twoSample_OutputSummary_files/figure-gfm/unnamed-chunk-10-1.png)<!-- -->
