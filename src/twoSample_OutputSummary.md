@@ -643,29 +643,49 @@ custom
 setwd("~/Github/updatedOysterTranscriptomeMappingComparison/")
 OG_RSEM <- read.delim("data/samples/originalGenome_customParameters/17005_.genes.results.txt")
 Hap_RSEM <- read.delim("data/samples/haploTigGenome_customParameters/17005.genes.results.txt")
+
+OG_RSEM_17099 <- read.delim("data/samples/originalGenome_customParameters/17099_.genes.results.txt")
+HAP_RSEM_17099 <- read.delim("data/samples/haploTigGenome_customParameters/17099.genes.results")
 # TPM
-tpmMat <- data.frame(OG_custom=OG_RSEM$TPM,Hap_custom=Hap_RSEM$TPM)
+tpmMat <- data.frame(OG_17005=OG_RSEM$TPM,Hap_17005=Hap_RSEM$TPM,
+                     OG_17099=OG_RSEM_17099$TPM,Hap_17099=HAP_RSEM_17099$TPM)
 # Length
-lengthMat <- data.frame(OG_custom=OG_RSEM$length,Hap_custom=Hap_RSEM$length)
+lengthMat <- data.frame(OG_17005=OG_RSEM$length,Hap_17005=Hap_RSEM$length,
+                        OG_17099=OG_RSEM_17099$length,Hap_17099=HAP_RSEM_17099$length)
 # Expected Count
-ExpCountMat <- data.frame(OG_custom=OG_RSEM$expected_count,Hap_custom=Hap_RSEM$expected_count)
+ExpCountMat <- data.frame(OG_17005=OG_RSEM$expected_count,Hap_17005=Hap_RSEM$expected_count,
+                          OG_17099=OG_RSEM_17099$expected_count,Hap_17099=HAP_RSEM_17099$expected_count)
 ```
 
 ### CountSummary
 
 ``` r
-#Number of genes with at least 1 TPM - original genome
-sum(tpmMat$OG_custom > 1)
+#17005 - Number of genes with at least 1 TPM - original genome
+sum(tpmMat$OG_17005 > 1)
 ```
 
     ## [1] 20598
 
 ``` r
-#Number of genes with at least 1 TPM - reduced genome
-sum(tpmMat$Hap_custom > 1)
+#17005- Number of genes with at least 1 TPM - reduced genome
+sum(tpmMat$Hap_17005 > 1)
 ```
 
     ## [1] 17908
+
+``` r
+#17099 - Number of genes with at least 1 TPM - original genome
+sum(tpmMat$OG_17099 > 1)
+```
+
+    ## [1] 21869
+
+``` r
+#17099- Number of genes with at least 1 TPM - reduced genome
+sum(tpmMat$Hap_17099 > 1)
+```
+
+    ## [1] 18976
 
 ### Correlations
 
@@ -699,18 +719,18 @@ corrplot.mixed(cor(ExpCountMat))
 ### TPM - Plot (Sample 17005, custom parameters, genome comparison)
 
 ``` r
-p1 <- ggplot(tpmMat,aes(x=OG_custom,y=Hap_custom)) + 
+p1 <- ggplot(tpmMat,aes(x=OG_17005,y=Hap_17005)) + 
   geom_point() +
   labs(x="Original Genome (TPM)", y = "Reduced Genome (TPM)",title="All Loci") +
   theme_cowplot()
 
-p2 <- ggplot(tpmMat,aes(x=OG_custom,y=Hap_custom)) + 
+p2 <- ggplot(tpmMat,aes(x=OG_17005,y=Hap_17005)) + 
   xlim(0,200) + ylim(0,200) +
   labs(x="Original Genome (TPM)", y = "Reduced Genome (TPM)",title="Max 200") +
   geom_point() +
   theme_cowplot()
 
-p3 <- ggplot(tpmMat,aes(x=OG_custom,y=Hap_custom)) + 
+p3 <- ggplot(tpmMat,aes(x=OG_17005,y=Hap_17005)) + 
   xlim(0,50) + ylim(0,50) +
   labs(x="Original Genome (TPM)", y = "Reduced Genome (TPM)",title="Max 50") +
   geom_point() +
@@ -724,3 +744,156 @@ plot_grid(p1,p2,p3,nrow = 3)
     ## Warning: Removed 3132 rows containing missing values (geom_point).
 
 ![](twoSample_OutputSummary_files/figure-gfm/unnamed-chunk-10-1.png)<!-- -->
+
+### TPM - Plot (Sample 17099, custom parameters, genome comparison)
+
+``` r
+p1 <- ggplot(tpmMat,aes(x=OG_17099,y=Hap_17099)) + 
+  geom_point() +
+  labs(x="Original Genome (TPM)", y = "Reduced Genome (TPM)",title="All Loci") +
+  theme_cowplot()
+
+p2 <- ggplot(tpmMat,aes(x=OG_17099,y=Hap_17099)) + 
+  xlim(0,200) + ylim(0,200) +
+  labs(x="Original Genome (TPM)", y = "Reduced Genome (TPM)",title="Max 200") +
+  geom_point() +
+  theme_cowplot()
+
+p3 <- ggplot(tpmMat,aes(x=OG_17099,y=Hap_17099)) + 
+  xlim(0,50) + ylim(0,50) +
+  labs(x="Original Genome (TPM)", y = "Reduced Genome (TPM)",title="Max 50") +
+  geom_point() +
+  theme_cowplot()
+
+plot_grid(p1,p2,p3,nrow = 3)
+```
+
+    ## Warning: Removed 688 rows containing missing values (geom_point).
+
+    ## Warning: Removed 3086 rows containing missing values (geom_point).
+
+![](twoSample_OutputSummary_files/figure-gfm/unnamed-chunk-11-1.png)<!-- -->
+
+## Comparing among samples
+
+To evaluate the impact of the genome mapping among samples I calculated
+the difference in coverage (TPM) between genome mapping approaches and
+examine whether this value difference among samples. The difference
+discussed below was calculated as:
+
+\[(X_{TPM,Hap})_{i}-(X_{TPM,OG})_{i}\]  
+Where \(X\) is the sample, and \(i\) is the gene.
+
+### All Genes
+
+**Absolute difference - All
+genes**
+
+``` r
+plot(c(abs(tpmMat$Hap_17005-tpmMat$OG_17005))~c(abs(tpmMat$Hap_17099-tpmMat$OG_17099)),
+     xlab="TPM difference 17099",ylab="TPM difference 17005")
+abline(a=0,b = 1,col="red")
+```
+
+![](twoSample_OutputSummary_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
+
+**Absolute difference - coverage \<
+500**
+
+``` r
+plot(c(abs(tpmMat$Hap_17005-tpmMat$OG_17005))~c(abs(tpmMat$Hap_17099-tpmMat$OG_17099)),
+     xlab="TPM difference 17099",ylab="TPM difference 17005",
+     xlim=c(0,200),ylim=c(0,200))
+abline(a=0,b = 1,col="red")
+```
+
+![](twoSample_OutputSummary_files/figure-gfm/unnamed-chunk-13-1.png)<!-- -->
+
+**Absolute difference - coverage \<
+50**
+
+``` r
+plot(c(abs(tpmMat$Hap_17005-tpmMat$OG_17005))~c(abs(tpmMat$Hap_17099-tpmMat$OG_17099)),
+     xlab="TPM difference 17099",ylab="TPM difference 17005",
+     xlim=c(0,50),ylim=c(0,50))
+abline(a=0,b = 1,col="red")
+```
+
+![](twoSample_OutputSummary_files/figure-gfm/unnamed-chunk-14-1.png)<!-- -->
+
+**Proportion difference (adjusted by max TPM)**
+
+``` r
+library(matrixStats)
+```
+
+    ## 
+    ## Attaching package: 'matrixStats'
+
+    ## The following object is masked from 'package:dplyr':
+    ## 
+    ##     count
+
+``` r
+hapProp_17005 <- c(tpmMat$Hap_17005-tpmMat$OG_17005)/rowMaxs(as.matrix(tpmMat[,1:2]))
+hapProp_17099 <- c(tpmMat$Hap_17099-tpmMat$OG_17099)/rowMaxs(as.matrix(tpmMat[,3:4]))
+
+plot(hapProp_17005~hapProp_17099,
+     xlab="Prop TPM difference 17099",ylab="Prop TPM difference 17005")
+abline(a=0,b=1,col="red",lwd=2)
+```
+
+![](twoSample_OutputSummary_files/figure-gfm/unnamed-chunk-15-1.png)<!-- -->
+
+### Filter dataset
+
+Looking at genes with moderate coverage (diff TPM \>= 1 in at least 1
+sample/mapping)
+
+``` r
+#Filter gene with no coverage in either samples
+minCov_all <- which(rowMins(as.matrix(tpmMat)) >= 1)
+tpmMat_filt <- tpmMat[minCov_all,]
+
+diff_17005 <- abs(tpmMat_filt$Hap_17005 - tpmMat_filt$OG_17005)
+diff_17099 <- abs(tpmMat_filt$Hap_17099 - tpmMat_filt$OG_17099)
+```
+
+**Absolute difference - All genes**
+
+``` r
+plot(diff_17005~diff_17099,
+     xlab="TPM difference 17099",ylab="TPM difference 17005")
+abline(a=0,b=1,col="red")
+```
+
+![](twoSample_OutputSummary_files/figure-gfm/unnamed-chunk-17-1.png)<!-- -->
+
+**Absolute difference - coverage \< 100**
+
+``` r
+plot(diff_17005~diff_17099,xlim=c(0,100),ylim=c(0,100),
+     xlab="TPM difference 17099",ylab="TPM difference 17005")
+abline(a=0,b=1,col="red")
+```
+
+![](twoSample_OutputSummary_files/figure-gfm/unnamed-chunk-18-1.png)<!-- -->
+
+**Absolute difference - All genes (log transformed)**
+
+``` r
+plot(log(diff_17005)~log(diff_17099),
+     xlab="TPM difference 17099 (log)",ylab="TPM difference 17005 (log)")
+abline(a=0,b=1,col="red")
+```
+
+![](twoSample_OutputSummary_files/figure-gfm/unnamed-chunk-19-1.png)<!-- -->
+
+**Number of genes with log-tpm fold \> 2 among samples**
+
+``` r
+## Sum 
+sum(abs(log(diff_17005)-log(diff_17099))>2)
+```
+
+    ## [1] 774
