@@ -1,5 +1,5 @@
 ---
-title: "Two Sample RNA-seq sample comparison"
+title: "Comparing genomes by mapping RNA-seq data"
 author: "adowneywall"
 date: "7/9/2020"
 output: github_document
@@ -18,7 +18,21 @@ library(cowplot, quietly = TRUE)
 library(dplyr, quietly = TRUE)
 library(kableExtra, quietly = TRUE)
 library(corrplot)
+library(edgeR,quietly = TRUE)
+library(limma,quietly = TRUE)
+#library(devtools)
+#install_github("vqv/ggbiplot")
+library(ggbiplot,quietly = TRUE)
 ```
+
+## Background  
+
+These 24 samples were part of an ocean acidification experiment looking at transcriptomic response in C. virginica mantle tissue under different experimental OA scenarios. The currently available oyster genome was used to analyze this data. Here, we compare the impact of using either that original genome on NCBI or the partially masked genome created by Jon Puritz.
+
+## Overview  
+
+In this script I compare mapping outputs using STAR. I used a custom set of parameters (more info on the notes markdown), however, comparison of default to custom parameters showed parameterization had little effect on mapping. Next I also compare RSEM outputs from samples mapped with either the original genome or the masked genome. In this analysis I also do a quick differential expression analysis similar to the one performed originally on this data to determine if the new mapping led to the discovery of any DEGs.
+
   
 ## STAR Mapping Comparison
 
@@ -57,51 +71,227 @@ hap_custom_STAR <- readInSTARSummary("data/samples/haploTigGenome_customParamete
 og_custom_STAR <- readInSTARSummary("data/samples/originalGenome_customParameters/",
                                       "original","custom",colNames)
 df_STAR <- rbind(hap_default_STAR,hap_custom_STAR,og_custom_STAR)
-
-sub <- c(which(df_STAR$Sample == c("17005")),which(df_STAR$Sample == c("17099")))
-df_overlap <- df_STAR[sub,]
 ```
 
 ```{r echo=FALSE}
 #### Table
- kable(df_overlap) %>%
-  kable_styling() %>%
-  scroll_box(width = "800px", height = "250px")
+ kable(df_STAR) %>%
+  kable_styling() # %>%
+  #scroll_box(width = "800px", height = "250px")
 ```
-
 
 ```{r  echo=FALSE, fig.width=10,fig.height=8}
 #### Plots
-p1 <- ggplot(df_overlap,aes(x=Sample,
-                            y=as.numeric(UniqueReadPercent),
-                            colour=interaction(Genome,Parameters))) + 
-  geom_jitter(size=5) +
-  labs(colour="Genome.Parameter",y="Unique Map %") +
-  theme_cowplot()
-p2 <- ggplot(df_overlap,aes(x=Sample,
-                   y=as.numeric(MultiMapReadPercent),
-                   colour=interaction(Genome,Parameters))) + 
-  geom_jitter(size=5) +
-  labs(colour="Genome.Parameter",y="Multi Map %") +
-  theme_cowplot()
-p3 <- ggplot(df_overlap,aes(x=Sample,
-                            y=as.numeric(MisMatchRate),
-                            colour=interaction(Genome,Parameters))) + 
-  geom_jitter(size=5) +
-  labs(colour="Genome.Parameter",y="Mismatch Rate (%)") +
-  theme_cowplot()
-p4 <- ggplot(df_overlap,aes(x=Sample,
-                            y=as.numeric(UnMappedShortPercent),
-                            colour=interaction(Genome,Parameters))) + 
-  geom_jitter(size=5) +
-  labs(colour="Genome.Parameter",y="Unmapped Read %") +
-  theme_cowplot()
+df_STAR <- df_STAR[df_STAR$Parameters != "default",]
+df_STAR$Parameters <- as.factor(as.character(df_STAR$Parameters))
 
-plot_grid(p1,p2,p3,p4,labels = c("A","B","C","D"),nrow=2)
+## Summary means
+meanHapUniq <- mean(as.numeric(df_STAR$UniqueReadPercent[df_STAR$Genome == "Hap"]))
+meanOGUniq <- mean(as.numeric(df_STAR$UniqueReadPercent[df_STAR$Genome == "original"]))
+meanHapMulti <- mean(as.numeric(df_STAR$MultiMapReadPercent[df_STAR$Genome == "Hap"]))
+meanOGMulti <- mean(as.numeric(df_STAR$MultiMapReadPercent[df_STAR$Genome == "original"]))
+meanHapMismatch <- mean(as.numeric(df_STAR$MisMatchRate[df_STAR$Genome == "Hap"]))
+meanOGMismatch <- mean(as.numeric(df_STAR$MisMatchRate[df_STAR$Genome == "original"]))
+meanHapUnMap <- mean(as.numeric(df_STAR$UnMappedShortPercent[df_STAR$Genome == "Hap"]))
+meanOGUnMap <- mean(as.numeric(df_STAR$UnMappedShortPercent[df_STAR$Genome == "original"]))
+
+p1 <- ggplot(df_STAR,aes(y=Sample,
+                            x=as.numeric(UniqueReadPercent),
+                            colour=interaction(Genome,Parameters))) + 
+  geom_vline(xintercept=c(meanHapUniq,meanOGUniq),colour=c("blue","orange")) +
+  geom_point(size=5) +
+  scale_colour_manual(values=c("blue","orange")) +
+  labs(colour="Genome.Parameter",x="Unique Map %",title="Unique Mapping") +
+  theme_cowplot()
+p1
+p2 <- ggplot(df_STAR,aes(y=Sample,
+                   x=as.numeric(MultiMapReadPercent),
+                   colour=interaction(Genome,Parameters))) +
+  geom_vline(xintercept=c(meanHapMulti,meanOGMulti),colour=c("blue","orange")) +
+  geom_point(size=5) +
+  scale_colour_manual(values=c("blue","orange")) +
+  labs(colour="Genome.Parameter",x="Multi Map %",title="Multi Mapping") +
+  theme_cowplot()
+p2
+p3 <- ggplot(df_STAR,aes(y=Sample,
+                            x=as.numeric(MisMatchRate),
+                            colour=interaction(Genome,Parameters))) +
+  geom_vline(xintercept=c(meanHapMismatch,meanOGMismatch),colour=c("blue","orange")) +
+  geom_point(size=5) +
+  scale_colour_manual(values=c("blue","orange")) +
+  labs(colour="Genome.Parameter",x="Mismatch Rate (%)",title="Mismatch Rate") +
+  theme_cowplot()
+p3
+p4 <- ggplot(df_STAR,aes(y=Sample,
+                            x=as.numeric(UnMappedShortPercent),
+                            colour=interaction(Genome,Parameters))) +
+  geom_vline(xintercept=c(meanHapUnMap,meanOGUnMap),colour=c("blue","orange")) +
+  geom_point(size=5) +
+  scale_colour_manual(values=c("blue","orange")) +
+  labs(colour="Genome.Parameter",x="Unmapped Read %",title="Unmapped Short Reads") +
+  theme_cowplot()
+p4
+#plot_grid(p1,p2,p3,p4,labels = c("A","B","C","D"),nrow=2)
 ```
 
-## RSEM Comparison (sample 17005)
+**Results**: The masked genome appears to improve the % unique reads mapped while decreasing the % multi reads mapped. The trad-off appears to be an increase in the number of unmapped short reads.
 
+## RSEM Comparison all samples - Genome comparison  
+
+```{r echo=FALSE, fig.width=10,fig.height=8}
+setwd("~/Github/updatedOysterTranscriptomeMappingComparison/")
+list.files("data/samples/haploTigGenome_customParameters/",pattern = "genes.results.txt")
+readInRSEMSummary <- function(folder=NULL,genome="Hap"){
+  fl <- list.files(folder,pattern = "genes.results.txt")
+  el <- NULL
+  ec <- NULL
+  tpmM <- NULL
+  ID <- NULL
+  for(i in 1:length(fl)){
+    x <- read.delim(paste0(folder,fl[i]),stringsAsFactors = FALSE)
+    el <- cbind(el,x$effective_length)
+    ec <- cbind(ec,x$expected_count)
+    tpmM <- cbind(tpmM,x$TPM)
+    ifelse(genome == "Hap",
+           ID <- c(ID,substr(fl[i],1,5)),
+           ID <- c(ID,substr(fl[i],4,8)))
+  }
+  el <- data.frame(el,stringsAsFactors = FALSE)
+  ec <- data.frame(ec,stringsAsFactors = FALSE)
+  tpmM <- data.frame(tpmM,stringsAsFactors = FALSE)
+  colnames(el) <- ID
+  colnames(ec) <- ID
+  colnames(tpmM) <- ID
+  y <- list(el=el,
+            ec=ec,
+            tpmM=tpmM)
+  return(y)
+}
+
+hap_custom_RSEM <- readInRSEMSummary("data/samples/haploTigGenome_customParameters/",
+                  "Hap")
+OG_custom_RSEM <- readInRSEMSummary("data/samples/haploTigGenome_customParameters/",
+                  "original")
+```
+
+**Comparing Samples based on TPM**
+```{r echo=FALSE, fig.width=10,fig.height=8}
+tpmComb <- cbind(hap_custom_RSEM$tpmM,OG_custom_RSEM$tpmM)
+col.names <- c(paste0("Hap_",colnames(hap_custom_RSEM$tpmM)),
+               paste0("OG_",colnames(OG_custom_RSEM$tpmM)))
+colnames(tpmComb) <- col.names
+corrplot(cor(tpmComb), diag = FALSE,
+         tl.pos = "td", tl.cex = 0.8, method = "color", type = "upper")
+```
+
+**Comparing Samples based on Expected Count**
+```{r echo=FALSE, fig.width=10,fig.height=8}
+ecComb <- cbind(hap_custom_RSEM$ec,OG_custom_RSEM$ec)
+col.names <- c(paste0("Hap_",colnames(hap_custom_RSEM$tpmM)),
+               paste0("OG_",colnames(OG_custom_RSEM$tpmM)))
+colnames(tpmComb) <- col.names
+corrplot(cor(tpmComb), diag = FALSE,
+         tl.pos = "td", tl.cex = 0.8, method = "color", type = "upper")
+```
+
+Some variation in among genomes, but most of the variation in correlation occurs among samples, suggesting that the genome has an impact but its less significant than individual variation.
+
+
+## Differential Expression Comparison
+
+I performed this differential expression analysis following  standard `limma-voom` approach, following the same step that were used when this data was first analyzed. Surprisingly, when this data was first analyzed we did not find any evidence of differential expression (although some evidence of global patterns). **Below is the work up of the mapped data from the masked genome ONLY**.
+
+```{r}
+setwd("~/Github/updatedOysterTranscriptomeMappingComparison/")
+# Meta data from experiment
+meta <- readRDS("data/refs/metadata_20190811.RData")
+meta$sampl_nameSimple <- substr(meta$sample_name,start = 4,stop=9)
+#Create new factor levels (one for each level combination)
+meta$SFVrn <- as.factor(paste0("D",meta$SFV))
+meta$Sample_Index <- as.factor(meta$sample_index)
+meta$TankID <- as.factor(meta$tankID)
+
+
+geneC_all <- round(hap_custom_RSEM$ec)
+### Filter used to remove uninformative genes
+## Genes 
+# Breaking down expression coverage by treatment*time combination
+#Day 9 Trt 2800
+keep_D9.2800 <- rowSums(cpm(geneC_all[,meta$SFVrn=="D09.2800"])>=1) >= 5
+sum(keep_D9.2800)
+#Day 9 Trt 400
+keep_D9.400 <- rowSums(cpm(geneC_all[,meta$SFVrn=="D09.400"])>=1) >= 5
+sum(keep_D9.400)
+#Day 80 Trt 2800
+keep_D80.2800 <- rowSums(cpm(geneC_all[,meta$SFVrn=="D80.2800"])>=1) >= 5
+sum(keep_D80.2800)
+#Day 80 Trt 400
+keep_D80.400 <- rowSums(cpm(geneC_all[,meta$SFVrn=="D80.400"])>=1) >= 5
+sum(keep_D80.400)
+
+keep_gene_a2 <- rowSums(cbind(keep_D9.2800,keep_D9.400,
+                              keep_D80.2800,keep_D80.400)) >= 1
+# Filter 
+geneC_a2 <- geneC_all[keep_gene_a2, ]
+## Create DGEList
+dge_gene_a2 <- DGEList(geneC_a2) # counts - rsem
+# Calculate normalization factors for scaling raw lib. size
+dge_gene_a2_norm <- calcNormFactors(dge_gene_a2,method = "TMMwsp") # gene - approach 2
+# Bar plot of normalization factors
+barplot(dge_gene_a2_norm$samples$norm.factors~rownames(dge_gene_a2_norm$samples),
+        las=2,ylab="Normalization factor",xlab="Samples")
+plotMDS(dge_gene_a2_norm, col = as.numeric(meta$SFVrn))
+design <- model.matrix(~0+SFVrn,data=meta) # 0+ is needed here otherwise the first level defaults to 1.
+#Rename columns
+colnames(design) <- levels(meta$SFVrn)
+#### Transform and create observational level weights ####
+## Gene Features 
+dge_gene_a2_o1_voom <- voomWithQualityWeights(dge_gene_a2_norm,design,plot = TRUE)
+## Plots
+barplot(dge_gene_a2_o1_voom$targets$sample.weights~rownames(dge_gene_a2_o1_voom$targets),
+        las=2,ylab="Sample Specific Weights",xlab="Samples")
+plotMDS(dge_gene_a2_o1_voom, col = as.numeric(meta$SFVrn))
+
+### Diff Expression
+# 17005 was removed as an outlier
+ge <- dge_gene_a2_o1_voom
+ge <- ge[,colnames(ge) != "17005"]
+meta <- meta[meta$ID != "17005",]
+# Updating design matrix
+design <- model.matrix(~0+SFVrn,data=meta) # 0+ is needed here otherwise the first level defaults to 1.
+#Rename columns
+colnames(design) <- levels(meta$SFVrn)
+## Contrast Matrix ##
+contr_mat <- makeContrasts(
+  CvE_D9 = D09.2800-D09.400,
+  CvE_D80 = D80.2800-D80.400,
+  C_D9vD80 = D09.400-D80.400,
+  Time = ((D09.2800-D09.400)- (D80.2800-D80.400))/2,
+  Treatment = ((D09.2800+D80.2800)-(D09.400+D80.400))/2,
+  levels=design
+)
+#### Identify correlation between factors in design contrasts with blocking factor ####
+ge_corr <- duplicateCorrelation(ge, design, block = meta$tankID)
+#### Fitting Model ####
+lmf_ge_corr <- lmFit(ge, design,
+                        block = meta$tankID,
+                        correlation = ge_corr$consensus.correlation)
+ge_contr <- contrasts.fit(lmf_ge_corr,contr_mat)
+ge_bayes <- eBayes(ge_contr,robust=TRUE)
+# Output - top candidate gene from any comparison
+top.table <- topTable(ge_bayes,lfc = 2,number = Inf) 
+head(top.table,5)
+# Output -  top candidate gene among ocean acidification treatments on day 9 of the experiment
+top.table_d9 <- topTable(ge_bayes,lfc = 2,number = Inf,coef = 1)
+head(top.table_d9,5)
+```
+
+No DEGs were discovered even with the new masked genome.
+
+
+**RSEM Results** : Genome did have an impact on transcript quantification in RSEM, evidenced by the fact that the same sample was NOT perfectly correlated among mapping approaches. This would suggest that is would be inappropriate to compare samples mapped with different genomes, however, most of the difference was still observed among individuals and ultimately the masked genome did not impact our DEG results.  
+
+## RSEM Comparison (sample 17005 and 17099) Genome and Parameter comparison
 ```{r}
 setwd("~/Github/updatedOysterTranscriptomeMappingComparison/")
 OG_RSEM <- read.delim("data/samples/originalGenome_customParameters/17005_.genes.results.txt")
@@ -134,7 +324,6 @@ sum(tpmMat$Hap_17099 > 1)
 ```
 
 ### Correlations
-
 **TPM (Transcripts Per Million)**
 ```{r}
 corrplot.mixed(cor(tpmMat))
